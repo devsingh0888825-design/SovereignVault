@@ -1,20 +1,23 @@
 import streamlit as st
 import sqlite3
 
-# Database Setup (DOB aur Gender add kiya hai)
+# Database Setup
 def init_db():
     conn = sqlite3.connect('sovereign_vault.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (user_id TEXT, name TEXT, dob TEXT, gender TEXT, p1 REAL, p2 REAL, p3 REAL, p4 REAL)''')
+                 (user_id TEXT, name TEXT, dob TEXT, gender TEXT, password TEXT, p1 REAL, p2 REAL, p3 REAL, p4 REAL)''')
     conn.commit()
     conn.close()
 
+# Logic Engine: Password shards 20%, 30%, 35%, 15%
 class VaultSystem:
     @staticmethod
     def generate_shards(biometric_id):
-        return [round(biometric_id * 0.20, 2), round(biometric_id * 0.30, 2), 
-                round(biometric_id * 0.35, 2), round(biometric_id * 0.15, 2)]
+        shards = [round(biometric_id * 0.20, 2), round(biometric_id * 0.30, 2), 
+                  round(biometric_id * 0.35, 2), round(biometric_id * 0.15, 2)]
+        password = "".join([str(s).replace('.', '') for s in shards])
+        return shards, password
 
 st.title("🛡️ SovereignVault Official")
 init_db()
@@ -27,31 +30,38 @@ if choice == "Register":
     dob = st.date_input("Date of Birth")
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     phone = st.text_input("Phone Number")
-    
-    # Face Scan (Camera Input)
-    st.write("---")
-    st.subheader("Biometric Face Scan")
     img_file = st.camera_input("Take a Face Scan")
-    
-    bio_id = st.number_input("Enter Manual Biometric Value (if camera fails)", min_value=0.0)
+    bio_id = st.number_input("Enter Biometric Value", min_value=0.0)
     
     if st.button("Register"):
         user_id = f"{name.lower()}.{phone[-4:]}@sovereignvault.com"
-        shards = VaultSystem.generate_shards(bio_id)
+        shards, password = VaultSystem.generate_shards(bio_id)
         
         conn = sqlite3.connect('sovereign_vault.db')
         c = conn.cursor()
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
-                  (user_id, name, str(dob), gender, *shards))
+        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                  (user_id, name, str(dob), gender, password, *shards))
         conn.commit()
         conn.close()
-        st.success(f"Registered! Your ID: {user_id}")
+        # Yahan user ko ID aur Password mil jayega
+        st.success(f"Registered Successfully!")
+        st.info(f"Your ID: {user_id}")
+        st.warning(f"Your Generated Password: {password}")
 
 elif choice == "Login":
+    st.subheader("Login Portal")
     user_id = st.text_input("User ID")
-    img_login = st.camera_input("Login Face Scan")
-    bio_id = st.number_input("Manual Biometric Value", min_value=0.0)
+    password = st.text_input("Password", type="password")
     
     if st.button("Login"):
-        st.write("Verifying...")
+        conn = sqlite3.connect('sovereign_vault.db')
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE user_id = ? AND password = ?", (user_id, password))
+        data = c.fetchone()
+        conn.close()
         
+        if data:
+            st.success("Login Successful! Welcome to the Vault.")
+        else:
+            st.error("Invalid ID or Password")
+            
