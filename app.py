@@ -14,7 +14,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Updated Face Geometry Logic (Aankh + Naak ka Triangle)
+# Face Geometry Logic
 def calculate_biometric(image_bytes):
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -24,12 +24,8 @@ def calculate_biometric(image_bytes):
         results = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         if results.multi_face_landmarks:
             landmarks = results.multi_face_landmarks[0].landmark
-            
-            # Landmark 159 (Left Eye), 386 (Right Eye), aur 1 (Nose Tip)
             eye_dist = abs(landmarks[159].x - landmarks[386].x)
             nose_to_eye = abs(landmarks[1].y - landmarks[159].y)
-            
-            # Geometry: Dono ka combination aur scaling (Triangle Distance)
             dist = (eye_dist + nose_to_eye) * 10000
             return round(dist, 2)
     return 0.0
@@ -41,7 +37,6 @@ class VaultSystem:
         s2 = round(biometric_id * 0.30, 2)
         s3 = round(biometric_id * 0.35, 2)
         s4 = round(biometric_id * 0.15, 2)
-        # Password generation
         password = f"{int(s1*100)}{int(s2*100)}{int(s3*100)}{int(s4*100)}"
         return [s1, s2, s3, s4], password
 
@@ -56,7 +51,6 @@ if choice == "Register":
     dob = st.date_input("Date of Birth", min_value=datetime.date(1900, 1, 1))
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     phone = st.text_input("Phone Number")
-    
     img_file = st.camera_input("Take a Face Scan")
     
     if st.button("Register"):
@@ -65,7 +59,6 @@ if choice == "Register":
             if bio_id > 0:
                 user_id = f"{name.lower().replace(' ', '.')}.{phone[-4:]}@sovereignvault.com"
                 shards, password = VaultSystem.generate_shards(bio_id)
-                
                 conn = sqlite3.connect('sovereign_vault.db')
                 c = conn.cursor()
                 c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
@@ -94,4 +87,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-                
+            
