@@ -2,8 +2,10 @@ import streamlit as st
 import sqlite3
 import datetime
 import cv2
-import mediapipe as mp
 import numpy as np
+# Import ko aur stable banaya hai
+import mediapipe as mp
+from mediapipe.python.solutions import face_mesh as mp_face_mesh
 
 # Database Setup
 def init_db():
@@ -14,27 +16,21 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Improved Face Geometry Logic
+# Face Geometry Logic
 def calculate_biometric(image_bytes):
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Mediapipe initialization
-    mp_face_mesh = mp.solutions.face_mesh
-    # FaceMesh ko context manager ke bahar handle karna zyada stable hota hai
-    face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1)
-    results = face_mesh.process(img_rgb)
-    
-    val = 0.0
-    if results.multi_face_landmarks:
-        landmarks = results.multi_face_landmarks[0].landmark
-        eye_dist = abs(landmarks[159].x - landmarks[386].x)
-        nose_to_eye = abs(landmarks[1].y - landmarks[159].y)
-        val = round((eye_dist + nose_to_eye) * 10000, 2)
-    
-    face_mesh.close()
-    return val
+    # Direct reference use kar rahe hain taaki AttributeError na aaye
+    with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
+        results = mesh.process(img_rgb)
+        if results.multi_face_landmarks:
+            lm = results.multi_face_landmarks[0].landmark
+            eye_dist = abs(lm[159].x - lm[386].x)
+            nose_to_eye = abs(lm[1].y - lm[159].y)
+            return round((eye_dist + nose_to_eye) * 10000, 2)
+    return 0.0
 
 class VaultSystem:
     @staticmethod
@@ -90,4 +86,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-    
+            
