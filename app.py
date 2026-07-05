@@ -1,11 +1,16 @@
 import streamlit as st
 import sqlite3
 import datetime
-import cv2
 import numpy as np
-# Import ko aur stable banaya hai
-import mediapipe as mp
-from mediapipe.python.solutions import face_mesh as mp_face_mesh
+
+# OpenCV aur Mediapipe ka error-proof loading
+try:
+    import cv2
+    import mediapipe as mp
+    from mediapipe.python.solutions import face_mesh as mp_face_mesh
+except ImportError:
+    st.error("System libraries load ho rahi hain... page ko 5 seconds mein refresh karein.")
+    st.stop()
 
 # Database Setup
 def init_db():
@@ -22,11 +27,12 @@ def calculate_biometric(image_bytes):
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Direct reference use kar rahe hain taaki AttributeError na aaye
+    # Direct reference to FaceMesh
     with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
         results = mesh.process(img_rgb)
         if results.multi_face_landmarks:
             lm = results.multi_face_landmarks[0].landmark
+            # Landmark 159 (Left Eye), 386 (Right Eye), aur 1 (Nose Tip)
             eye_dist = abs(lm[159].x - lm[386].x)
             nose_to_eye = abs(lm[1].y - lm[159].y)
             return round((eye_dist + nose_to_eye) * 10000, 2)
@@ -86,4 +92,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-            
+                
