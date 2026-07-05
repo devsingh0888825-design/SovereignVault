@@ -1,16 +1,19 @@
 import streamlit as st
 import sqlite3
+import datetime # Date range handle karne ke liye
 
-# Database Setup
+# Database Setup - Table ko reset karne ke liye DROP command add ki hai
 def init_db():
     conn = sqlite3.connect('sovereign_vault.db')
     c = conn.cursor()
+    # Purani table hatao taaki error na aaye
+    c.execute('DROP TABLE IF EXISTS users')
     c.execute('''CREATE TABLE IF NOT EXISTS users 
                  (user_id TEXT, name TEXT, dob TEXT, gender TEXT, password TEXT, p1 REAL, p2 REAL, p3 REAL, p4 REAL)''')
     conn.commit()
     conn.close()
 
-# Logic Engine: Password shards 20%, 30%, 35%, 15%
+# Logic Engine
 class VaultSystem:
     @staticmethod
     def generate_shards(biometric_id):
@@ -27,9 +30,11 @@ choice = st.sidebar.selectbox("Menu", menu)
 
 if choice == "Register":
     name = st.text_input("Name")
-    dob = st.date_input("Date of Birth")
+    # Date of birth range fix ki hai
+    dob = st.date_input("Date of Birth", min_value=datetime.date(1900, 1, 1), max_value=datetime.date.today())
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     phone = st.text_input("Phone Number")
+    
     img_file = st.camera_input("Take a Face Scan")
     bio_id = st.number_input("Enter Biometric Value", min_value=0.0)
     
@@ -43,8 +48,7 @@ if choice == "Register":
                   (user_id, name, str(dob), gender, password, *shards))
         conn.commit()
         conn.close()
-        # Yahan user ko ID aur Password mil jayega
-        st.success(f"Registered Successfully!")
+        st.success("Registered Successfully!")
         st.info(f"Your ID: {user_id}")
         st.warning(f"Your Generated Password: {password}")
 
@@ -64,4 +68,4 @@ elif choice == "Login":
             st.success("Login Successful! Welcome to the Vault.")
         else:
             st.error("Invalid ID or Password")
-            
+    
