@@ -17,6 +17,7 @@ if 'step' not in st.session_state:
 if 'reg_data' not in st.session_state:
     st.session_state.reg_data = {}
 
+st.set_page_config(page_title="SovereignVault")
 st.title("🛡️ SovereignVault Official")
 init_db()
 
@@ -43,52 +44,59 @@ if choice == "Register":
     # Step 2: Face Scan
     elif st.session_state.step == 2:
         st.subheader("Step 2: Face Scan")
-        # Yahan library load ho rahi hai (Sirf tabhi jab zarurat hai)
-        import cv2
-        import numpy as np
-        import mediapipe as mp
+        
+        # Load libraries inside the block to prevent memory crashes
+        try:
+            import cv2
+            import numpy as np
+            import mediapipe as mp
+        except ImportError:
+            st.error("Error: System libraries missing. Check packages.txt.")
+            st.stop()
         
         img_file = st.camera_input("Take a Face Scan")
         
         if img_file:
             if st.button("Complete Registration"):
-                nparr = np.frombuffer(img_file.getvalue(), np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                
-                mp_face_mesh = mp.solutions.face_mesh
-                with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
-                    results = mesh.process(img_rgb)
-                    if results.multi_face_landmarks:
-                        lm = results.multi_face_landmarks[0].landmark
-                        bio_id = round((abs(lm[159].x - lm[386].x) + abs(lm[1].y - lm[159].y)) * 10000, 2)
-                        
-                        # Generate Shards & Password
-                        s1, s2, s3, s4 = bio_id*0.2, bio_id*0.3, bio_id*0.35, bio_id*0.15
-                        password = f"{int(s1*100)}{int(s2*100)}{int(s3*100)}{int(s4*100)}"
-                        
-                        data = st.session_state.reg_data
-                        user_id = f"{data['name'].lower().replace(' ', '.')}.{data['phone'][-4:]}@sovereignvault.com"
-                        
-                        conn = sqlite3.connect('sovereign_vault.db')
-                        c = conn.cursor()
-                        c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
-                                  (user_id, data['name'], data['dob'], data['gender'], password, s1, s2, s3, s4))
-                        conn.commit()
-                        conn.close()
-                        
-                        st.session_state.final_id = user_id
-                        st.session_state.final_pass = password
-                        st.session_state.step = 3
-                        st.rerun()
-                    else:
-                        st.error("Face detect nahi hua, phir se koshish karein!")
+                try:
+                    nparr = np.frombuffer(img_file.getvalue(), np.uint8)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    
+                    mp_face_mesh = mp.solutions.face_mesh
+                    with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
+                        results = mesh.process(img_rgb)
+                        if results.multi_face_landmarks:
+                            lm = results.multi_face_landmarks[0].landmark
+                            bio_id = round((abs(lm[159].x - lm[386].x) + abs(lm[1].y - lm[159].y)) * 10000, 2)
+                            
+                            s1, s2, s3, s4 = bio_id*0.20, bio_id*0.30, bio_id*0.35, bio_id*0.15
+                            password = f"{int(s1*100)}{int(s2*100)}{int(s3*100)}{int(s4*100)}"
+                            
+                            data = st.session_state.reg_data
+                            user_id = f"{data['name'].lower().replace(' ', '.')}.{data['phone'][-4:]}@sovereignvault.com"
+                            
+                            conn = sqlite3.connect('sovereign_vault.db')
+                            c = conn.cursor()
+                            c.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                                      (user_id, data['name'], data['dob'], data['gender'], password, s1, s2, s3, s4))
+                            conn.commit()
+                            conn.close()
+                            
+                            st.session_state.final_id = user_id
+                            st.session_state.final_pass = password
+                            st.session_state.step = 3
+                            st.rerun()
+                        else:
+                            st.error("Face detect nahi hua, acche se roshni mein scan karein!")
+                except Exception as e:
+                    st.error(f"Error during processing: {e}")
 
     # Step 3: Success
     elif st.session_state.step == 3:
-        st.success("Registered Successfully!")
-        st.write(f"**ID:** {st.session_state.final_id}")
-        st.warning(f"**Password:** {st.session_state.final_pass}")
+        st.success("Registration Successful!")
+        st.write(f"**User ID:** {st.session_state.final_id}")
+        st.warning(f"**Generated Password:** {st.session_state.final_pass}")
         if st.button("New Registration"):
             st.session_state.step = 1
             st.rerun()
@@ -107,4 +115,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-  
+                            
