@@ -3,7 +3,7 @@ import sqlite3
 import datetime
 import os
 
-# Important: OpenCV ko headless mode mein force karne ke liye
+# OpenCV environment fix
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 # Database Setup
@@ -14,6 +14,14 @@ def init_db():
                  (user_id TEXT, name TEXT, dob TEXT, gender TEXT, password TEXT, p1 REAL, p2 REAL, p3 REAL, p4 REAL)''')
     conn.commit()
     conn.close()
+
+# Caching for heavy libraries to prevent re-importing issues
+@st.cache_resource
+def load_cv_libs():
+    import cv2
+    import numpy as np
+    import mediapipe as mp
+    return cv2, np, mp
 
 # Session State Setup
 if 'step' not in st.session_state:
@@ -54,14 +62,12 @@ if choice == "Register":
         if img_file:
             if st.button("Complete Registration"):
                 try:
-                    import cv2
-                    import numpy as np
-                    import mediapipe as mp
+                    # Libraries loaded via cached function
+                    cv2, np, mp = load_cv_libs()
                     
                     nparr = np.frombuffer(img_file.getvalue(), np.uint8)
                     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                     
-                    # Agar image null hai toh error bataye
                     if img is None:
                         st.error("Image capture nahi ho payi, phir se koshish karein.")
                         st.stop()
@@ -95,7 +101,7 @@ if choice == "Register":
                         else:
                             st.error("Face detect nahi hua, acche se roshni mein scan karein!")
                 except Exception as e:
-                    st.error(f"Error during processing: {e}")
+                    st.error(f"System Error: {e}. Please ensure packages are installed.")
 
     # Step 3: Success
     elif st.session_state.step == 3:
@@ -120,4 +126,3 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-                    
