@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 
-# OpenCV environment fix for headless server
+# OpenCV environment fix
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 # Database Setup
@@ -51,6 +51,7 @@ if choice == "Register":
     # Step 2: Face Scan
     elif st.session_state.step == 2:
         st.subheader("Step 2: Face Scan")
+        
         img_file = st.camera_input("Take a Face Scan")
         
         if img_file:
@@ -65,7 +66,7 @@ if choice == "Register":
                         
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     
-                    # MediaPipe FaceMesh usage
+                    # MediaPipe FaceMesh
                     with mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
                         results = mesh.process(img_rgb)
                         if results.multi_face_landmarks:
