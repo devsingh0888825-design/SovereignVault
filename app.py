@@ -9,6 +9,9 @@ import mediapipe as mp
 # OpenCV environment fix
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
+# MediaPipe Solutions ko explicitly access karna
+mp_face_mesh = mp.solutions.face_mesh
+
 # Database Setup
 def init_db():
     conn = sqlite3.connect('sovereign_vault.db')
@@ -66,8 +69,8 @@ if choice == "Register":
                         
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     
-                    # MediaPipe FaceMesh
-                    with mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
+                    # MediaPipe FaceMesh (Ab mp_face_mesh variable use ho raha hai)
+                    with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
                         results = mesh.process(img_rgb)
                         if results.multi_face_landmarks:
                             lm = results.multi_face_landmarks[0].landmark
