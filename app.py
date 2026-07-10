@@ -1,6 +1,10 @@
 import streamlit as st
 import sqlite3
 import datetime
+import os
+
+# Important: OpenCV ko headless mode mein force karne ke liye
+os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 # Database Setup
 def init_db():
@@ -45,22 +49,23 @@ if choice == "Register":
     elif st.session_state.step == 2:
         st.subheader("Step 2: Face Scan")
         
-        # Load libraries inside the block to prevent memory crashes
-        try:
-            import cv2
-            import numpy as np
-            import mediapipe as mp
-        except ImportError:
-            st.error("Error: System libraries missing. Check packages.txt.")
-            st.stop()
-        
         img_file = st.camera_input("Take a Face Scan")
         
         if img_file:
             if st.button("Complete Registration"):
                 try:
+                    import cv2
+                    import numpy as np
+                    import mediapipe as mp
+                    
                     nparr = np.frombuffer(img_file.getvalue(), np.uint8)
                     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    
+                    # Agar image null hai toh error bataye
+                    if img is None:
+                        st.error("Image capture nahi ho payi, phir se koshish karein.")
+                        st.stop()
+                        
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     
                     mp_face_mesh = mp.solutions.face_mesh
@@ -115,4 +120,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-                            
+                    
