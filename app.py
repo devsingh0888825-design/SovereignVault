@@ -2,6 +2,9 @@ import streamlit as st
 import sqlite3
 import datetime
 import os
+import cv2
+import numpy as np
+import mediapipe as mp
 
 # OpenCV environment fix
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
@@ -14,14 +17,6 @@ def init_db():
                  (user_id TEXT, name TEXT, dob TEXT, gender TEXT, password TEXT, p1 REAL, p2 REAL, p3 REAL, p4 REAL)''')
     conn.commit()
     conn.close()
-
-# Caching for heavy libraries to prevent re-importing issues
-@st.cache_resource
-def load_cv_libs():
-    import cv2
-    import numpy as np
-    import mediapipe as mp
-    return cv2, np, mp
 
 # Session State Setup
 if 'step' not in st.session_state:
@@ -37,7 +32,6 @@ menu = ["Register", "Login"]
 choice = st.sidebar.selectbox("Menu", menu)
 
 if choice == "Register":
-    # Step 1: Personal Details
     if st.session_state.step == 1:
         st.subheader("Step 1: Personal Details")
         name = st.text_input("Name")
@@ -53,29 +47,24 @@ if choice == "Register":
             else:
                 st.error("Please fill Name and Phone Number")
 
-    # Step 2: Face Scan
     elif st.session_state.step == 2:
         st.subheader("Step 2: Face Scan")
-        
         img_file = st.camera_input("Take a Face Scan")
         
         if img_file:
             if st.button("Complete Registration"):
                 try:
-                    # Libraries loaded via cached function
-                    cv2, np, mp = load_cv_libs()
-                    
                     nparr = np.frombuffer(img_file.getvalue(), np.uint8)
                     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                     
                     if img is None:
-                        st.error("Image capture nahi ho payi, phir se koshish karein.")
+                        st.error("Image capture nahi ho payi.")
                         st.stop()
                         
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     
-                    mp_face_mesh = mp.solutions.face_mesh
-                    with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
+                    # Direct MediaPipe approach
+                    with mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
                         results = mesh.process(img_rgb)
                         if results.multi_face_landmarks:
                             lm = results.multi_face_landmarks[0].landmark
@@ -99,18 +88,15 @@ if choice == "Register":
                             st.session_state.step = 3
                             st.rerun()
                         else:
-                            st.error("Face detect nahi hua, acche se roshni mein scan karein!")
+                            st.error("Face detect nahi hua!")
                 except Exception as e:
-                    st.error(f"System Error: {e}. Please ensure packages are installed.")
+                    st.error(f"Error: {e}")
 
-    # Step 3: Success
     elif st.session_state.step == 3:
         st.success("Registration Successful!")
         st.write(f"**User ID:** {st.session_state.final_id}")
         st.warning(f"**Generated Password:** {st.session_state.final_pass}")
-        if st.button("New Registration"):
-            st.session_state.step = 1
-            st.rerun()
+        if st.button("New Registration"): st.session_state.step = 1; st.rerun()
 
 elif choice == "Login":
     st.subheader("Login Portal")
@@ -126,3 +112,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
+        
