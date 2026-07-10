@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 
-# OpenCV environment fix
+# OpenCV environment fix for headless server
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 # Database Setup
@@ -32,6 +32,7 @@ menu = ["Register", "Login"]
 choice = st.sidebar.selectbox("Menu", menu)
 
 if choice == "Register":
+    # Step 1: Personal Details
     if st.session_state.step == 1:
         st.subheader("Step 1: Personal Details")
         name = st.text_input("Name")
@@ -47,6 +48,7 @@ if choice == "Register":
             else:
                 st.error("Please fill Name and Phone Number")
 
+    # Step 2: Face Scan
     elif st.session_state.step == 2:
         st.subheader("Step 2: Face Scan")
         img_file = st.camera_input("Take a Face Scan")
@@ -58,12 +60,12 @@ if choice == "Register":
                     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                     
                     if img is None:
-                        st.error("Image capture nahi ho payi.")
+                        st.error("Image capture nahi ho payi, phir se koshish karein.")
                         st.stop()
                         
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                     
-                    # Direct MediaPipe approach
+                    # MediaPipe FaceMesh usage
                     with mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as mesh:
                         results = mesh.process(img_rgb)
                         if results.multi_face_landmarks:
@@ -88,15 +90,18 @@ if choice == "Register":
                             st.session_state.step = 3
                             st.rerun()
                         else:
-                            st.error("Face detect nahi hua!")
+                            st.error("Face detect nahi hua, acche se roshni mein scan karein!")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    st.error(f"Processing Error: {e}")
 
+    # Step 3: Success
     elif st.session_state.step == 3:
         st.success("Registration Successful!")
         st.write(f"**User ID:** {st.session_state.final_id}")
         st.warning(f"**Generated Password:** {st.session_state.final_pass}")
-        if st.button("New Registration"): st.session_state.step = 1; st.rerun()
+        if st.button("New Registration"):
+            st.session_state.step = 1
+            st.rerun()
 
 elif choice == "Login":
     st.subheader("Login Portal")
@@ -112,4 +117,4 @@ elif choice == "Login":
             st.success(f"Welcome back, {data[1]}!")
         else:
             st.error("Invalid ID or Password")
-        
+                            
